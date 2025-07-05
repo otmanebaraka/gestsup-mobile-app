@@ -1,0 +1,102 @@
+version: '3.8'
+
+services:
+  # MariaDB Database for GestSup
+  gestsup-db:
+    image: mariadb:10.6
+    container_name: gestsup-mariadb
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password_change_me
+      MYSQL_DATABASE: gestsup
+      MYSQL_USER: gestsup
+      MYSQL_PASSWORD: gestsup_password_change_me
+    volumes:
+      - gestsup_db_data:/var/lib/mysql
+      - ./docker/mariadb/conf.d:/etc/mysql/conf.d
+    ports:
+      - "3306:3306"
+    networks:
+      - gestsup-network
+
+  # GestSup Application (Apache + PHP)
+  gestsup-app:
+    build:
+      context: ./docker/gestsup
+      dockerfile: Dockerfile
+    container_name: gestsup-apache
+    restart: unless-stopped
+    volumes:
+      - gestsup_app_data:/var/www/html
+      - ./docker/gestsup/uploads:/var/www/html/upload
+      - ./docker/gestsup/backup:/var/www/html/backup
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - gestsup-network
+    depends_on:
+      - gestsup-db
+    environment:
+      - DB_HOST=gestsup-db
+      - DB_NAME=gestsup
+      - DB_USER=gestsup
+      - DB_PASSWORD=gestsup_password_change_me
+
+  # Mobile API Layer (Node.js/Express)
+  mobile-api:
+    build:
+      context: ./mobile-api
+      dockerfile: Dockerfile
+    container_name: gestsup-mobile-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=gestsup-db
+      - DB_NAME=gestsup
+      - DB_USER=gestsup
+      - DB_PASSWORD=gestsup_password_change_me
+      - GESTSUP_URL=http://gestsup-app
+      - JWT_SECRET=your_jwt_secret_change_me
+    volumes:
+      - ./mobile-api:/app
+      - /app/node_modules
+    networks:
+      - gestsup-network
+    depends_on:
+      - gestsup-db
+      - gestsup-app
+
+  # WebSocket Server for Real-time Notifications
+  websocket-server:
+    build:
+      context: ./websocket-server
+      dockerfile: Dockerfile
+    container_name: gestsup-websocket
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=gestsup-db
+      - DB_NAME=gestsup
+      - DB_USER=gestsup
+      - DB_PASSWORD=gestsup_password_change_me
+      - CORS_ORIGIN=http://localhost:3000
+    volumes:
+      - ./websocket-server:/app
+      - /app/node_modules
+    networks:
+      - gestsup-network
+    depends_on:
+      - gestsup-db
+
+networks:
+  gestsup-network:
+    driver: bridge
+
+volumes:
+  gestsup_db_data:
+  gestsup_app_data:
