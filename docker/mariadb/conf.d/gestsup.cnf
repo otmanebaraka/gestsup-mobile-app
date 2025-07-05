@@ -1,0 +1,37 @@
+[mysqld]
+# GestSup MariaDB Configuration
+# Based on https://doc.gestsup.fr/install/
+
+# Buffer pool size - set to 25% of available RAM (1GB for 4GB system)
+innodb_buffer_pool_size = 1G
+
+# Skip DNS resolution for better performance
+skip-name-resolve
+
+# Character set
+character-set-server = utf8mb4
+collation-server = utf8mb4_unicode_ci
+
+# Connection settings
+max_connections = 100
+wait_timeout = 600
+interactive_timeout = 600
+
+# Query cache (if available)
+query_cache_type = ON
+query_cache_size = 32M
+
+# Log settings
+slow_query_log = ON
+slow_query_log_file = /var/log/mysql/slow.log
+long_query_time = 2
+
+# Binary logging
+log_bin = mysql-bin
+expire_logs_days = 7
+
+[mysql]
+default-character-set = utf8mb4
+
+[client]
+default-character-set = utf8mb4
